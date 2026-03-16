@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>파이썬 호러 방탈출 10단계</title>
+<style>
+  :root{
+    --bg:#07070a; --panel:#14141b; --blood:#b80f2e; --text:#ececf1; --muted:#aaa7b3; --good:#5ce07f; --warn:#ffcc66;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: "Malgun Gothic", Arial, sans-serif; background: radial-gradient(circle at top, #161621 0%, #07070a 55%, #000 100%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  .title{
+    text-align:center; padding:18px 20px; border:1px solid rgba(184,15,46,.45); border-radius:18px; background:rgba(20,20,27,.86);
+    box-shadow:0 0 40px rgba(184,15,46,.12), inset 0 0 20px rgba(255,255,255,.02);
+  }
+  h1{margin:0; font-size:38px; letter-spacing:1px; color:#fff}
+  .subtitle{margin-top:8px; color:#d4b7be}
+  .hud{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .card{background:rgba(20,20,27,.92); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px 16px}
+  .label{font-size:13px; color:var(--muted); margin-bottom:6px}
+  .value{font-size:28px; font-weight:700}
+  .danger{color:#ff8ba0}
+  .good{color:var(--good)}
+  .main{display:grid;grid-template-columns:1.2fr .8fr; gap:18px}
+  .story{line-height:1.8; font-size:16px; min-height:180px}
+  .mission{margin-top:14px; padding:16px; border-radius:14px; background:rgba(184,15,46,.08); border:1px solid rgba(184,15,46,.28)}
+  .mission strong{color:#ffccd5}
+  textarea{
+    width:100%; min-height:200px; resize:vertical; background:#0a0a10; color:#f5f5f7; border:1px solid rgba(255,255,255,.1);
+    border-radius:14px; padding:16px; font-family:Consolas, monospace; font-size:15px; line-height:1.5;
+  }
+  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  button{cursor:pointer; border:none; border-radius:12px; padding:12px 16px; font-size:15px; font-weight:700}
+  .primary{background:var(--blood); color:white}
+  .secondary{background:#303041; color:white}
+  .ghost{background:#191922; color:#dedee7; border:1px solid rgba(255,255,255,.08)}
+  .log{margin-top:14px; min-height:64px; line-height:1.7; color:#e9e7f0}
+  .hint{margin-top:14px; font-size:14px; color:#d9d3de; padding:12px 14px; border-radius:12px; background:#101018}
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.86); display:none; align-items:center; justify-content:center; padding:20px; z-index:10;
+  }
+  .modal{max-width:760px; width:100%; background:#101018; border:1px solid rgba(184,15,46,.35); border-radius:20px; padding:28px; text-align:center; box-shadow:0 0 60px rgba(184,15,46,.18)}
+  .modal h2{font-size:34px; margin:0 0 10px}
+  .modal p{line-height:1.8; color:#ddd9e4}
+  .examples{font-size:14px; color:#cfc9d3; line-height:1.8}
+  .hidden{display:none !important}
+  .footer{margin-top:16px; color:#9a97a4; font-size:13px; text-align:center}
+  @media (max-width:900px){.hud,.main{grid-template-columns:1fr}.hud{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">
+    <h1>파이썬 호러 방탈출 10단계</h1>
+    <div class="subtitle">1분 안에 저택을 탈출하세요. 틀리면 현재 단계에서 다시 도전합니다.</div>
+  </div>
+
+  <div class="hud">
+    <div class="card"><div class="label">현재 단계</div><div class="value" id="stageNo">1 / 10</div></div>
+    <div class="card"><div class="label">남은 시간</div><div class="value danger" id="timeLeft">60</div></div>
+    <div class="card"><div class="label">현재 점수</div><div class="value good" id="score">0</div></div>
+    <div class="card"><div class="label">음산한 음악</div><div class="value" style="font-size:18px" id="audioState">꺼짐</div></div>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="label">스토리</div>
+      <div class="story" id="story"></div>
+      <div class="mission" id="mission"></div>
+      <div class="hint" id="hint"></div>
+    </div>
+
+    <div class="card" id="answerPanel">
+      <div class="label">학생 입력 코드</div>
+      <textarea id="answerBox" spellcheck="false" placeholder="여기에 코드를 입력하세요"></textarea>
+      <div class="btns">
+        <button class="primary" onclick="submitAnswer()">제출하기</button>
+        <button class="secondary" onclick="retryStage()">현재 단계 다시하기</button>
+        <button class="ghost" onclick="toggleAudio()">음악 켜기/끄기</button>
+      </div>
+      <div class="log" id="log">시작 버튼을 누르면 저택 문이 닫힙니다.</div>
+      <div class="examples">주의: 이 게임은 정답 코드와 거의 같아야 통과합니다. 공백과 줄바꿈은 자동으로 정리됩니다.</div>
+    </div>
+  </div>
+
+  <div class="footer">수업용 프로토타입 · HTML 파일을 브라우저에서 열어 실행하세요</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+const stages = [
+  {
+    story:"낡은 현관문 위로 피 묻은 글씨가 흐른다. ‘처음 인사를 못하면 집은 너를 손님으로 인정하지 않는다.’ 촛불이 깜빡이며 첫 문장이 벽에 새겨진다.",
+    mission:"print 함수로 문자열 <strong>\"문이 열린다\"</strong> 를 출력하세요.",
+    hint:"힌트: print(\"문이 열린다\")",
+    answer:'print("문이 열린다")'
+  },
+  {
+    story:"복도 바닥에 숫자가 떠오른다. 귀신은 이름이 붙은 상자만 믿는다고 속삭인다.",
+    mission:"변수 <strong>key</strong> 에 숫자 <strong>7</strong> 을 저장하는 한 줄 코드를 작성하세요.",
+    hint:"힌트: 변수 = 값",
+    answer:'key = 7'
+  },
+  {
+    story:"차가운 거울에 ‘정수와 문자열을 구분하라’는 문장이 나타난다. 거울 속 손이 type을 요구한다.",
+    mission:"문자열 <strong>\"ghost\"</strong> 의 자료형을 출력하세요.",
+    hint:"힌트: type(값)",
+    answer:'print(type("ghost"))'
+  },
+  {
+    story:"지하로 내려가는 계단 수가 계속 변한다. 정답은 산술의 흔적 안에 있다.",
+    mission:"변수 <strong>a</strong> 에 10, 변수 <strong>b</strong> 에 3을 저장한 뒤, 두 수의 합을 출력하세요.",
+    hint:"힌트: 세 줄로 작성해도 됩니다.",
+    answer:'a = 10\nb = 3\nprint(a + b)'
+  },
+  {
+    story:"벽시계가 멈춘 방. 짝수만 문이 열린다. 홀수면 저택이 처음으로 되감긴다.",
+    mission:"변수 <strong>n</strong> 에 12를 저장한 뒤, <strong>n % 2 == 0</strong> 이면 <strong>\"짝수\"</strong> 를 출력하는 코드를 작성하세요.",
+    hint:"힌트: if 조건식: 형태를 떠올리세요.",
+    answer:'n = 12\nif n % 2 == 0:\n    print("짝수")'
+  },
+  {
+    story:"창문마다 까마귀가 다섯 마리씩 앉아 있다. 반복하지 못하면 창문은 영원히 닫힌다.",
+    mission:"for문을 사용해 숫자 <strong>0부터 4까지</strong> 출력하세요.",
+    hint:"힌트: for i in range(5):",
+    answer:'for i in range(5):\n    print(i)'
+  },
+  {
+    story:"실험실 문 앞. 살아남으려면 입력을 숫자로 바꿔야 한다. 그렇지 않으면 문자열의 저주가 덮친다.",
+    mission:"사용자에게 숫자를 입력받아 변수 <strong>age</strong> 에 정수로 저장하는 코드를 작성하세요.",
+    hint:"힌트: int(input())",
+    answer:'age = int(input())'
+  },
+  {
+    story:"천장에 매달린 인형이 속삭인다. ‘함수를 부르면 길이 열린다.’ 이름 없는 힘은 여기서 통하지 않는다.",
+    mission:"매개변수 없이 <strong>scare</strong> 라는 함수를 만들고, 함수 안에서 <strong>\"도망쳐\"</strong> 를 출력하세요.",
+    hint:"힌트: def 함수이름():",
+    answer:'def scare():\n    print("도망쳐")'
+  },
+  {
+    story:"저택의 심장부. 문에 두 숫자를 더하라는 피 문양이 새겨져 있다. 함수가 답을 돌려주지 않으면 길은 막힌다.",
+    mission:"함수 <strong>add</strong> 를 만들고 매개변수 <strong>x, y</strong> 를 받아 <strong>x + y</strong> 를 반환하세요.",
+    hint:"힌트: return 사용",
+    answer:'def add(x, y):\n    return x + y'
+  },
+  {
+    story:"마지막 철문 앞. 남은 시간을 그대로 점수로 바꾸는 저주가 걸려 있다. 이 문장만 완성하면 새벽 공기가 닿는다.",
+    mission:"남은 시간을 나타내는 변수 <strong>time_left</strong> 를 출력문에 넣어 <strong>f문자열</strong> 로 <strong>\"탈출 점수: {time_left}\"</strong> 형식으로 출력하세요.",
+    hint:"힌트: print(f\"...{변수}...\")",
+    answer:'print(f"탈출 점수: {time_left}")'
+  }
+];
+
+let currentStage = 0;
+let timer = 60;
+let timerId = null;
+let started = false;
+let audioCtx = null;
+let osc1 = null;
+let osc2 = null;
+let gainNode = null;
+let audioOn = false;
+
+function normalizeCode(text){
+  return text.replace(/\r/g, '').split('\n').map(v => v.trimEnd()).join('\n').trim();
+}
+
+function setStage(){
+  const s = stages[currentStage];
+  document.getElementById('stageNo').textContent = `${currentStage+1} / ${stages.length}`;
+  document.getElementById('story').textContent = s.story;
+  document.getElementById('mission').innerHTML = s.mission;
+  document.getElementById('hint').textContent = s.hint;
+  document.getElementById('answerBox').value = '';
+  document.getElementById('answerBox').focus();
+  document.getElementById('log').innerHTML = `단계 ${currentStage+1} 시작. 틀리면 현재 단계에서 다시 도전합니다.`;
+  updateScore();
+}
+
+function updateTime(){
+  document.getElementById('timeLeft').textContent = timer;
+  if(timer <= 10) document.getElementById('timeLeft').style.color = '#ff4b6a';
+}
+
+function updateScore(){
+  const score = Math.max(0, timer * 10 + currentStage * 15);
+  document.getElementById('score').textContent = score;
+}
+
+function startTimer(){
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    timer -= 1;
+    updateTime();
+    updateScore();
+    if(timer <= 0){
+      clearInterval(timerId);
+      hideAnswerPanel();
+      showModal('시간 초과', `1분 안에 저택을 빠져나오지 못했습니다. 점수는 0점입니다. 입력창이 사라졌습니다. 다시하기를 누르면 현재 단계부터 이어서 도전합니다.`, true);
+    }
+  }, 1000);
+}
+
+function showAnswerPanel(){
+  document.getElementById('answerPanel').classList.remove('hidden');
+}
+
+function hideAnswerPanel(){
+  document.getElementById('answerPanel').classList.add('hidden');
+}
+
+function startGame(){
+  currentStage = 0;
+  timer = 60;
+  started = true;
+  showAnswerPanel();
+  updateTime();
+  setStage();
+  startTimer();
+  hideModal();
+  document.getElementById('log').textContent = '문이 닫혔습니다. 지금부터 60초입니다.';
+}
+
+function retryStage(){
+  showAnswerPanel();
+  hideModal();
+  document.getElementById('answerBox').value = '';
+  document.getElementById('answerBox').focus();
+  document.getElementById('log').innerHTML = `<span style="color:#ffcc66">현재 단계 다시 도전</span> 단계 ${currentStage+1}을 다시 풀어보세요.`;
+}
+
+function failAndReset(reason){
+  hideAnswerPanel();
+  showModal('잘못된 코드', `${reason}<br><br>입력창이 사라졌습니다. 다시하기를 누르면 현재 단계를 다시 풀 수 있습니다.`, true);
+}
+
+function submitAnswer(){
+  if(!started){
+    startGame();
+    return;
+  }
+  const user = normalizeCode(document.getElementById('answerBox').value);
+  const expected = normalizeCode(stages[currentStage].answer);
+  if(user === expected){
+    if(currentStage === stages.length - 1){
+      clearInterval(timerId);
+      const finalScore = Math.max(0, timer * 10);
+      document.getElementById('score').textContent = finalScore;
+      showModal('탈출 성공', `축하합니다. 10단계를 모두 통과했습니다.<br><br>남은 시간: <strong>${timer}초</strong><br>최종 점수: <strong>${finalScore}점</strong><br><br>이 점수는 남은 시간을 기준으로 계산되었습니다.`, false);
+      return;
+    }
+    currentStage += 1;
+    setStage();
+    document.getElementById('log').innerHTML = `<span style="color:#8df0a4">정답입니다.</span> 다음 방으로 이동합니다.`;
+  } else {
+    failAndReset('정답과 다릅니다. 문법과 들여쓰기, 문자열 따옴표를 다시 보세요.');
+  }
+}
+
+function showModal(title, message, reset){
+  const overlay = document.getElementById('overlay');
+  const modal = document.getElementById('modal');
+  modal.innerHTML = `<h2>${title}</h2><p>${message}</p><div class="btns" style="justify-content:center;margin-top:18px"><button class="primary" onclick="${reset ? 'retryStage()' : 'hideModal()'}">${reset ? '다시하기' : '닫기'}</button></div>`;
+  overlay.style.display = 'flex';
+}
+function hideModal(){ document.getElementById('overlay').style.display='none'; }
+
+function setupAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  gainNode = audioCtx.createGain();
+  gainNode.gain.value = 0.015;
+  gainNode.connect(audioCtx.destination);
+
+  osc1 = audioCtx.createOscillator();
+  osc1.type = 'sine';
+  osc1.frequency.value = 55;
+  osc1.connect(gainNode);
+
+  osc2 = audioCtx.createOscillator();
+  osc2.type = 'triangle';
+  osc2.frequency.value = 82;
+  osc2.connect(gainNode);
+
+  osc1.start();
+  osc2.start();
+
+  // slight modulation for eerie ambience
+  setInterval(() => {
+    if(!audioOn || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    osc1.frequency.linearRampToValueAtTime(50 + Math.random()*15, t + 1.2);
+    osc2.frequency.linearRampToValueAtTime(78 + Math.random()*18, t + 1.2);
+    gainNode.gain.linearRampToValueAtTime(0.01 + Math.random()*0.015, t + 1.2);
+  }, 1200);
+}
+
+async function toggleAudio(){
+  setupAudio();
+  if(audioCtx.state === 'suspended') await audioCtx.resume();
+  audioOn = !audioOn;
+  gainNode.gain.value = audioOn ? 0.018 : 0.0;
+  document.getElementById('audioState').textContent = audioOn ? '켜짐' : '꺼짐';
+}
+
+window.onload = () => {
+  setStage();
+  updateTime();
+};
+</script>
+</body>
+</html>
