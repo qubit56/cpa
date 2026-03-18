@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>연결 리스트 인벤토리 시뮬레이터</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #2c3e50; color: white; text-align: center; padding: 20px; }
+        .setup-info { background: #34495e; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: inline-block; border-left: 5px solid #3498db; }
+        #inventory-track { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px; margin-top: 50px; min-height: 200px; }
+        
+        /* 노드 스타일: 이미지 속 구조 반영 */
+        .node { width: 160px; border: 2px solid #ecf0f1; border-radius: 10px; overflow: hidden; background: #34495e; transition: all 0.3s; position: relative; }
+        .node.head-node { border: 3px solid #f1c40f; box-shadow: 0 0 15px #f1c40f; }
+        .node.tail-node { border: 3px solid #e67e22; }
+        
+        .field-data { background: #2980b9; padding: 10px; font-weight: bold; border-bottom: 1px solid #ecf0f1; }
+        .field-link { background: #16a085; padding: 8px; font-size: 0.85em; }
+        
+        .label { font-size: 11px; color: #bdc3c7; display: block; margin-bottom: 3px; }
+        .pointer-tag { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: black; padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+        
+        .arrow { font-size: 30px; color: #ecf0f1; }
+        .controls { margin: 30px; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 200px; }
+        button { padding: 10px 20px; border-radius: 5px; border: none; background: #3498db; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 인벤토리 자료구조 게임</h1>
+    
+    <div class="setup-info">
+        <strong>강의 포인트:</strong> 노드는 <b>Data Field</b>와 <b>Link Field(Next)</b>로 구성됩니다.<br>
+        아이템을 추가하며 <b>Head</b>와 <b>Tail</b>이 어떻게 변하는지 확인해보세요!
+    </div>
+
+    <div class="controls">
+        <input type="text" id="itemName" placeholder="획득할 아이템 이름">
+        <button onclick="addItem()">아이템 추가 (Insert Tail)</button>
+        <button onclick="location.reload()" style="background:#95a5a6">초기화</button>
+    </div>
+
+    <div id="inventory-track">
+        </div>
+
+    <script>
+        let inventory = [];
+
+        function addItem() {
+            const input = document.getElementById('itemName');
+            if (!input.value) { alert("아이템 이름을 입력하세요!"); return; }
+            
+            inventory.push(input.value);
+            input.value = '';
+            render();
+        }
+
+        function render() {
+            const track = document.getElementById('inventory-track');
+            track.innerHTML = '';
+
+            if (inventory.length === 0) {
+                track.innerHTML = "<p>가방이 비어 있습니다.</p>";
+                return;
+            }
+
+            inventory.forEach((item, i) => {
+                const isHead = (i === 0);
+                const isTail = (i === inventory.length - 1);
+                
+                // 노드 구성
+                const node = document.createElement('div');
+                node.className = `node ${isHead ? 'head-node' : ''} ${isTail ? 'tail-node' : ''}`;
+                
+                let tags = '';
+                if(isHead) tags += '<div class="pointer-tag">Head</div>';
+                if(isTail) tags += '<div class="pointer-tag" style="top: -30px; background:#e67e22; color:white;">Tail</div>';
+
+                node.innerHTML = `
+                    ${tags}
+                    <div class="field-data">
+                        <span class="label">1. Data Field</span>
+                        ${item}
+                    </div>
+                    <div class="field-link">
+                        <span class="label">2. Link Field</span>
+                        Next: ${inventory[i+1] ? 'Node['+(i+1)+']' : 'NULL'}
+                    </div>
+                `;
+                
+                track.appendChild(node);
+
+                // 연결 화살표
+                if (!isTail) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.innerHTML = '➡';
+                    track.appendChild(arrow);
+                }
+            });
+        }
+
+        render();
+    </script>
+</body>
+</html>

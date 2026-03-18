@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자료구조 성능 비교 시뮬레이션</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background: #f8f9fa; padding: 20px; text-align: center; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .visual-box { display: flex; justify-content: space-around; margin: 20px 0; gap: 20px; }
+        .method-card { flex: 1; padding: 20px; border: 2px solid #e9ecef; border-radius: 10px; transition: 0.3s; }
+        .method-card.active { border-color: #3498db; background: #ebf5fb; }
+        
+        .timer { font-size: 24px; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+        .desc { font-size: 14px; color: #666; min-height: 40px; }
+        
+        .progress-container { width: 100%; background: #eee; height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
+        .progress-bar { width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s; }
+        
+        .controls { margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        input { padding: 10px; width: 100px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 25px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 삽입 연산($O$) 속도 대결</h1>
+    <p>데이터 <strong>10,000개</strong> 중 <strong>8,760번째</strong>에 아이템을 넣을 때!</p>
+
+    <div class="controls">
+        데이터 수: <input type="number" id="dataSize" value="10000"> 
+        삽입 위치: <input type="number" id="targetIdx" value="8760">
+        <button onclick="startSimulation()">시뮬레이션 시작</button>
+    </div>
+
+    <div class="visual-box">
+        <div class="method-card" id="card-array">
+            <h3>📦 배열 (Array)</h3>
+            <div class="desc" id="desc-array">아이템을 넣기 위해 뒤쪽 데이터를 한 칸씩 미는 중...</div>
+            <div class="timer" id="time-array">0.0000 ms</div>
+            <div class="progress-container"><div class="progress-bar" id="pb-array"></div></div>
+            <p style="font-size: 12px; margin-top:10px;">연산: <strong>O(n)</strong></p>
+        </div>
+
+        <div class="method-card" id="card-ll">
+            <h3>🔗 연결 리스트 (Linked List)</h3>
+            <div class="desc" id="desc-ll">해당 위치까지 노드를 타고 이동 중...</div>
+            <div class="timer" id="time-ll">0.0000 ms</div>
+            <div class="progress-container"><div class="progress-bar" id="pb-ll"></div></div>
+            <p style="font-size: 12px; margin-top:10px;">연산: <strong>O(1)</strong> (위치 도달 시)</p>
+        </div>
+    </div>
+
+    <div id="result-msg" style="margin-top: 20px; font-weight: bold; color: #2c3e50;"></div>
+</div>
+
+<script>
+    async function startSimulation() {
+        const size = parseInt(document.getElementById('dataSize').value);
+        const idx = parseInt(document.getElementById('targetIdx').value);
+        
+        document.getElementById('result-msg').innerText = "시뮬레이션 진행 중...";
+        
+        // --- 1. 배열 시뮬레이션 (이동하는 모습 시각화) ---
+        const startArr = performance.now();
+        for(let i=0; i <= (size - idx); i++) {
+            if(i % 100 === 0) { // 너무 빠르면 안보이니 적당히 업데이트
+                document.getElementById('pb-array').style.width = (i / (size-idx) * 100) + "%";
+                await new Promise(r => setTimeout(r, 1)); 
+            }
+        }
+        const endArr = performance.now();
+        const arrayTime = (endArr - startArr).toFixed(4);
+        document.getElementById('time-array').innerText = arrayTime + " ms";
+        document.getElementById('desc-array').innerText = "✅ 이사 완료! (데이터 밀기 성공)";
+
+        // --- 2. 연결 리스트 시뮬레이션 (탐색하는 모습 시각화) ---
+        const startLL = performance.now();
+        for(let i=0; i <= idx; i++) {
+            if(i % 500 === 0) {
+                document.getElementById('pb-ll').style.width = (i / idx * 100) + "%";
+                await new Promise(r => setTimeout(r, 1));
+            }
+        }
+        const endLL = performance.now();
+        const llTime = (endLL - startLL).toFixed(4);
+        document.getElementById('time-ll').innerText = llTime + " ms";
+        document.getElementById('desc-ll').innerText = "✅ 연결 완료! (포인터 교체 성공)";
+
+        // --- 결과 판정 ---
+        let msg = "";
+        if (parseFloat(arrayTime) > parseFloat(llTime)) {
+            msg = "🏆 연결 리스트 승리! 삽입 시 데이터를 밀어낼 필요가 없습니다.";
+        } else {
+            msg = "⚠️ 탐색 비용 발생! 연결 리스트는 삽입 위치까지 '걸어가는 시간'이 걸립니다.";
+        }
+        document.getElementById('result-msg').innerText = msg;
+    }
+</script>
+</body>
+</html>

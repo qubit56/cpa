@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>잡티의 연결 리스트 플레이어</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .player-card { width: 350px; background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center; }
+        .album-art { width: 200px; height: 200px; background: linear-gradient(45deg, #1db954, #191414); margin: 0 auto 20px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 50px; }
+        h2 { margin: 10px 0 5px; font-size: 22px; }
+        p { color: #b3b3b3; margin-bottom: 25px; }
+        
+        .controls { display: flex; justify-content: center; gap: 20px; align-items: center; }
+        button { background: none; border: none; color: white; cursor: pointer; font-size: 30px; transition: 0.2s; }
+        button:hover { color: #1db954; transform: scale(1.1); }
+        #play-btn { font-size: 50px; }
+
+        .playlist-info { margin-top: 30px; text-align: left; font-size: 14px; border-top: 1px solid #333; padding-top: 15px; }
+        .current-link { color: #1db954; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div class="player-card">
+    <div class="album-art">🎵</div>
+    <h2 id="title">노래를 재생하세요</h2>
+    <p id="artist">연결 리스트 시스템</p>
+
+    <div class="controls">
+        <button onclick="playPrev()">⏮</button>
+        <button id="play-btn" onclick="togglePlay()">▶️</button>
+        <button onclick="playNext()">⏭</button>
+    </div>
+
+    <div class="playlist-info">
+        <div><strong>자료구조 상태:</strong></div>
+        <div class="current-link" id="debug-info">Head -> NULL</div>
+    </div>
+</div>
+
+<audio id="main-audio"></audio>
+
+<script>
+    // 1. 노드(Node) 구조 정의
+    const songs = [
+        { title: "Summer Breeze", artist: "Lo-fi HipHop", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "Digital Dreams", artist: "Synthwave", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Midnight City", artist: "Electronic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" }
+    ];
+
+    let currentIndex = 0;
+    const audio = document.getElementById('main-audio');
+    const playBtn = document.getElementById('play-btn');
+
+    // 2. 노래 정보 업데이트 (연결 리스트 탐색 시뮬레이션)
+    function updatePlayer() {
+        const song = songs[currentIndex];
+        document.getElementById('title').innerText = song.title;
+        document.getElementById('artist').innerText = song.artist;
+        audio.src = song.url;
+        
+        // 자료구조 시각화 업데이트
+        let debugText = "";
+        songs.forEach((s, i) => {
+            if(i === currentIndex) debugText += `[${s.title}]*`;
+            else debugText += s.title;
+            if(i < songs.length - 1) debugText += " -> ";
+        });
+        document.getElementById('debug-info').innerText = debugText + " -> NULL";
+    }
+
+    function togglePlay() {
+        if (audio.paused) {
+            audio.play();
+            playBtn.innerText = "⏸";
+        } else {
+            audio.pause();
+            playBtn.innerText = "▶️";
+        }
+    }
+
+    // 3. 포인터 이동 로직 (Next / Prev)
+    function playNext() {
+        currentIndex = (currentIndex + 1) % songs.length; // 원형 연결 리스트 시뮬레이션
+        updatePlayer();
+        audio.play();
+        playBtn.innerText = "⏸";
+    }
+
+    function playPrev() {
+        currentIndex = (currentIndex - 1 + songs.length) % songs.length;
+        updatePlayer();
+        audio.play();
+        playBtn.innerText = "⏸";
+    }
+
+    // 초기화
+    updatePlayer();
+</script>
+
+</body>
+</html>

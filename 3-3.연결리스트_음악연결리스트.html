@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>연결 리스트 뮤직 플레이리스트</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #121212; color: white; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+        .playlist-container { width: 400px; background: #1e1e1e; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #1db954; margin-bottom: 20px; }
+        
+        .song-item {
+            background: #282828; margin: 10px 0; padding: 15px; border-radius: 8px;
+            display: flex; align-items: center; cursor: grab; transition: 0.2s;
+            border: 1px solid transparent;
+        }
+        .song-item:active { cursor: grabbing; }
+        .song-item.dragging { opacity: 0.5; border: 1px dashed #1db954; }
+        
+        .song-info { flex-grow: 1; }
+        .song-title { font-weight: bold; display: block; }
+        .song-artist { font-size: 0.8em; color: #b3b3b3; }
+        
+        .handle { margin-right: 15px; color: #535353; font-size: 20px; }
+        
+        .hint { font-size: 0.85em; color: #1db954; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="playlist-container">
+        <h2>My Playlist 🎧</h2>
+        <div id="playlist">
+            <div class="song-item" draggable="true">
+                <span class="handle">☰</span>
+                <div class="song-info">
+                    <span class="song-title">Hype Boy</span>
+                    <span class="song-artist">NewJeans</span>
+                </div>
+            </div>
+            <div class="song-item" draggable="true">
+                <span class="handle">☰</span>
+                <div class="song-info">
+                    <span class="song-title">Seven (feat. Latto)</span>
+                    <span class="song-artist">Jung Kook</span>
+                </div>
+            </div>
+            <div class="song-item" draggable="true">
+                <span class="handle">☰</span>
+                <div class="song-info">
+                    <span class="song-title">Perfect Night</span>
+                    <span class="song-artist">LE SSERAFIM</span>
+                </div>
+            </div>
+            <div class="song-item" draggable="true">
+                <span class="handle">☰</span>
+                <div class="song-info">
+                    <span class="song-title">Love Wins All</span>
+                    <span class="song-artist">IU</span>
+                </div>
+            </div>
+        </div>
+        <p class="hint">곡을 드래그해서 순서를 바꿔보세요!</p>
+    </div>
+
+    <script>
+        const playlist = document.getElementById('playlist');
+        let draggingElement = null;
+
+        // 드래그 시작
+        playlist.addEventListener('dragstart', (e) => {
+            draggingElement = e.target;
+            e.target.classList.add('dragging');
+        });
+
+        // 드래그 끝
+        playlist.addEventListener('dragend', (e) => {
+            e.target.classList.remove('dragging');
+            draggingElement = null;
+        });
+
+        // 드래그 중 위치 계산 (연결 리스트의 삽입 로직 시각화)
+        playlist.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(playlist, e.clientY);
+            if (afterElement == null) {
+                playlist.appendChild(draggingElement);
+            } else {
+                playlist.insertBefore(draggingElement, afterElement);
+            }
+        });
+
+        // 어떤 요소 사이에 들어갈지 결정하는 함수
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.song-item:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+    </script>
+</body>
+</html>
