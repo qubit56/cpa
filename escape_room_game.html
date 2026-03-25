@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STACK ESCAPE — 탈출의 미로</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --panel: #111118;
+    --border: #2a2a3a;
+    --gold: #c9a84c;
+    --gold2: #f0d080;
+    --red: #c0392b;
+    --green: #27ae60;
+    --blue: #2980b9;
+    --text: #d0c8b0;
+    --dim: #5a5560;
+    --glow: rgba(201,168,76,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif KR', serif;
+    min-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  #header h1 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.1rem;
+    color: var(--gold);
+    letter-spacing: 4px;
+  }
+  #timer-box {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    color: var(--gold2);
+    background: #1a1a22;
+    padding: 4px 14px;
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+  }
+  #stack-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--dim);
+  }
+  .stack-item {
+    background: #1e1e2a;
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: var(--gold);
+    font-size: 0.7rem;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: MAP ── */
+  #map-panel {
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    padding: 14px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #map-panel h2 {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--dim);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .room-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    background: #0d0d14;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .room-btn:hover:not(.locked) {
+    border-color: var(--gold);
+    background: var(--glow);
+  }
+  .room-btn.current {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+  .room-btn.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .room-btn.cleared {
+    border-color: var(--green);
+    opacity: 0.7;
+  }
+  .room-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--gold);
+    width: 20px;
+  }
+  .room-name {
+    font-size: 0.72rem;
+    color: var(--text);
+    flex: 1;
+  }
+  .room-icon { font-size: 0.9rem; }
+
+  /* ── CENTER: SCENE ── */
+  #scene-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #scene-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  #scene-desc {
+    font-size: 0.8rem;
+    color: var(--dim);
+    text-align: center;
+    max-width: 480px;
+    margin-bottom: 16px;
+    line-height: 1.7;
+  }
+
+  #scene-svg-wrap {
+    width: 100%;
+    max-width: 520px;
+    aspect-ratio: 4/3;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #060608;
+    position: relative;
+    cursor: pointer;
+  }
+  #scene-svg-wrap svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* clickable hotspots */
+  .hotspot {
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .hotspot:hover { opacity: 0.7; }
+
+  /* ── PUZZLE OVERLAY ── */
+  #puzzle-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #puzzle-overlay.show { display: flex; }
+  #puzzle-box {
+    background: var(--panel);
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 380px;
+    max-width: 95vw;
+    box-shadow: 0 0 40px rgba(201,168,76,0.2);
+    position: relative;
+  }
+  #puzzle-title {
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+  #puzzle-desc {
+    font-size: 0.78rem;
+    color: var(--dim);
+    margin-bottom: 18px;
+    line-height: 1.7;
+  }
+  #puzzle-input {
+    width: 100%;
+    background: #0a0a12;
+    border: 1px solid var(--border);
+    color: var(--gold2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.2rem;
+    padding: 10px 14px;
+    border-radius: 6px;
+    text-align: center;
+    letter-spacing: 6px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  #puzzle-input:focus { border-color: var(--gold); }
+  .puzzle-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  .btn-confirm { background: var(--gold); color: #0a0a0f; font-weight: 700; }
+  .btn-confirm:hover { background: var(--gold2); }
+  .btn-cancel { background: #1a1a22; color: var(--dim); border: 1px solid var(--border); }
+  .btn-cancel:hover { color: var(--text); }
+  #puzzle-msg { font-size: 0.78rem; text-align: center; margin-top: 4px; min-height: 18px; }
+
+  /* ── RIGHT: HINTS ── */
+  #hint-panel {
+    width: 200px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  #hint-panel h2 {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--dim);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .hint-item {
+    background: #0d0d14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    animation: fadeIn 0.4s;
+  }
+  .hint-item .hint-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 3px;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+
+  /* ── BOTTOM: ACTIONS ── */
+  #action-bar {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  .action-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #1a1a22;
+    color: var(--text);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .action-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .action-btn.primary { background: var(--gold); color: #0a0a0f; border-color: var(--gold); font-weight: 700; }
+  .action-btn.primary:hover { background: var(--gold2); }
+
+  /* ── CLEAR OVERLAY ── */
+  #clear-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+  }
+  #clear-overlay.show { display: flex; }
+  #clear-overlay h1 { font-size: 2.5rem; color: var(--gold); letter-spacing: 6px; }
+  #clear-overlay p { color: var(--dim); font-size: 0.9rem; line-height: 2; }
+
+  #intro-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.97);
+    z-index: 300;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+    padding: 30px;
+  }
+  #intro-overlay h1 { font-size: 2rem; color: var(--gold); letter-spacing: 6px; }
+  #intro-overlay p { color: var(--dim); font-size: 0.85rem; line-height: 2; max-width: 440px; }
+
+  .tag-badge {
+    display: inline-block;
+    background: #1a1a22;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro-overlay">
+  <span class="tag-badge">STACK-BASED ESCAPE GAME</span>
+  <h1>STACK ESCAPE</h1>
+  <p>
+    당신은 지하 연구소의 미로에 갇혔습니다.<br>
+    10개의 방을 순서대로 탈출해야 합니다.<br><br>
+    각 방의 <strong style="color:var(--gold)">금고</strong>를 열어 힌트를 수집하고,<br>
+    문의 암호를 풀어 다음 방으로 이동하세요.<br><br>
+    <span style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--dim)">
+    방문 기록은 STACK으로 관리됩니다 — 뒤로가기 가능
+    </span>
+  </p>
+  <button class="action-btn primary" onclick="startGame()" style="padding:12px 40px;font-size:1rem">
+    탈출 시작
+  </button>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <h1>⬡ STACK ESCAPE</h1>
+  <div id="timer-box">00:00</div>
+  <div id="stack-display">
+    <span style="color:var(--dim);font-size:0.7rem">STACK:</span>
+    <span id="stack-items"></span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- MAP -->
+  <div id="map-panel">
+    <h2>▸ 방 목록</h2>
+    <div id="room-list"></div>
+  </div>
+
+  <!-- SCENE -->
+  <div id="scene-panel">
+    <div id="scene-title">방을 선택하세요</div>
+    <div id="scene-desc"></div>
+    <div id="scene-svg-wrap">
+      <svg id="main-svg" viewBox="0 0 520 390" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <!-- HINTS -->
+  <div id="hint-panel">
+    <h2>🔑 수집된 힌트</h2>
+    <div id="hint-list"></div>
+  </div>
+</div>
+
+<!-- ACTION BAR -->
+<div id="action-bar">
+  <button class="action-btn" onclick="goBack()">← 뒤로가기 (POP)</button>
+  <button class="action-btn" id="safe-btn" onclick="openSafe()" style="display:none">🔒 금고 열기</button>
+  <button class="action-btn primary" id="exit-btn" onclick="tryExit()" style="display:none">🚪 문 열기 (다음 방)</button>
+</div>
+
+<!-- PUZZLE OVERLAY -->
+<div id="puzzle-overlay">
+  <div id="puzzle-box">
+    <div id="puzzle-title">🔐 암호 입력</div>
+    <div id="puzzle-desc"></div>
+    <input id="puzzle-input" type="text" maxlength="6" placeholder="????">
+    <button class="puzzle-btn btn-confirm" onclick="submitPuzzle()">확인</button>
+    <button class="puzzle-btn btn-cancel" onclick="closePuzzle()">취소</button>
+    <div id="puzzle-msg"></div>
+  </div>
+</div>
+
+<!-- CLEAR OVERLAY -->
+<div id="clear-overlay">
+  <h1>🏆 탈출 성공!</h1>
+  <p id="clear-msg"></p>
+  <button class="action-btn primary" onclick="location.reload()" style="padding:12px 36px">다시 시작</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  GAME DATA — 10 Rooms
+// ═══════════════════════════════════════════════
+const ROOMS = [
+  {
+    id: 1, name: "입구 홀",  icon: "🚪",
+    desc: "먼지 쌓인 대형 홀. 정면에 육중한 문이 보인다. 벽에는 낡은 시계가 걸려 있다.",
+    safeHint: { tag: "힌트 #1", text: "시계 바늘은 3시 15분을 가리킨다. 숫자를 기억하라." },
+    safeCode: "1988",
+    safeClue: "금고 뒤편의 먼지 속에서 종이를 발견했다 — '개관년도: 1988'",
+    exitCode: "0315",
+    exitClue: "시계의 시·분 → 0315",
+    bgColor: "#0e0c08",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="rg1" cx="50%" cy="40%"><stop offset="0%" stop-color="#1a1508"/><stop offset="100%" stop-color="#050503"/></radialGradient>
+          <filter id="glow1"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="520" height="390" fill="url(#rg1)"/>
+        <!-- floor -->
+        <rect x="0" y="300" width="520" height="90" fill="#0a0805"/>
+        <line x1="0" y1="300" x2="520" y2="300" stroke="#2a2010" stroke-width="2"/>
+        <!-- wall tiles -->
+        ${[0,1,2,3,4].map(i=>`<rect x="${i*104}" y="0" width="104" height="300" fill="none" stroke="#1a1608" stroke-width="1"/>`).join('')}
+        ${[0,1,2].map(i=>`<line x1="0" y1="${i*100}" x2="520" y2="${i*100}" stroke="#1a1608" stroke-width="1"/>`).join('')}
+        <!-- door frame -->
+        <rect x="200" y="120" width="120" height="180" fill="#080605" stroke="#c9a84c" stroke-width="2"/>
+        <rect x="210" y="130" width="100" height="160" fill="#0a0806"/>
+        <circle cx="300" cy="210" r="6" fill="#c9a84c" filter="url(#glow1)"/>
+        <!-- clock -->
+        <circle cx="80" cy="80" r="40" fill="#0d0b08" stroke="#4a3a20" stroke-width="3"/>
+        <circle cx="80" cy="80" r="35" fill="#0e0c09"/>
+        ${[...Array(12)].map((_,i)=>{const a=i*30*Math.PI/180;return `<line x1="${80+28*Math.sin(a)}" y1="${80-28*Math.cos(a)}" x2="${80+32*Math.sin(a)}" y2="${80-32*Math.cos(a)}" stroke="#4a3a20" stroke-width="2"/>`}).join('')}
+        <!-- hour 3 -->
+        <line x1="80" y1="80" x2="104" y2="80" stroke="#c9a84c" stroke-width="3" stroke-linecap="round"/>
+        <!-- minute 15 -->
+        <line x1="80" y1="80" x2="80" y2="52" stroke="#c9a84c" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="80" cy="80" r="3" fill="#c9a84c"/>
+        <text x="80" y="105" text-anchor="middle" fill="#4a3a20" font-size="8" font-family="monospace">CLOCK</text>
+        <!-- safe -->
+        <rect x="390" y="200" width="90" height="70" rx="4" fill="#0d0b08" stroke="#4a3a20" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="435" cy="235" r="18" fill="#0a0805" stroke="#4a3a20" stroke-width="2"/>
+        <circle cx="435" cy="235" r="12" fill="none" stroke="#c9a84c" stroke-width="1"/>
+        <circle cx="435" cy="235" r="4" fill="#c9a84c"/>
+        <text x="435" y="282" text-anchor="middle" fill="#4a3a20" font-size="9" font-family="monospace">SAFE</text>
+        <!-- candles -->
+        <rect x="150" y="270" width="8" height="30" fill="#d4c080"/>
+        <ellipse cx="154" cy="268" rx="4" ry="7" fill="#ff8820" opacity="0.8"/>
+        <rect x="362" y="270" width="8" height="30" fill="#d4c080"/>
+        <ellipse cx="366" cy="268" rx="4" ry="7" fill="#ff8820" opacity="0.8"/>
+      `;
+    }
+  },
+  {
+    id: 2, name: "도서관",  icon: "📚",
+    desc: "가득 찬 책장들 사이로 좁은 통로가 나 있다. 어딘가에 금고가 숨겨져 있다.",
+    safeHint: { tag: "힌트 #2", text: "셰익스피어 전집 4권. 붉은 표지의 7번째 책." },
+    safeCode: "4747",
+    safeClue: "책 사이에서 쪽지 — '4·7·4·7'",
+    exitCode: "0315",
+    exitClue: "힌트 조합: Room1(0315) ← 이미 알고 있다",
+    bgColor: "#080c08",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs><radialGradient id="rg2" cx="50%" cy="60%"><stop offset="0%" stop-color="#0e1008"/><stop offset="100%" stop-color="#040604"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg2)"/>
+        <rect x="0" y="310" width="520" height="80" fill="#060806"/>
+        <!-- bookshelves -->
+        ${[0,1,2,3].map(shelf=>`
+          <rect x="${shelf*130}" y="20" width="120" height="280" fill="#0a0c08" stroke="#1a2012" stroke-width="1"/>
+          ${[0,1,2,3,4].map(row=>`
+            ${[0,1,2,3,4,5,6].map(col=>{
+              const colors=['#8B3A3A','#3A5A8B','#3A7A3A','#6B5A2A','#5A3A6B','#7A5A3A','#8B6A3A'];
+              const c=colors[(shelf*7+row*7+col)%7];
+              return `<rect x="${shelf*130+6+col*16}" y="${30+row*50}" width="14" height="${30+Math.floor(Math.random()*15)}" fill="${c}" rx="1"/>`;
+            }).join('')}
+          `).join('')}
+        `).join('')}
+        <!-- hidden safe behind book -->
+        <rect x="60" y="120" width="60" height="45" rx="3" fill="#0d0e08" stroke="#3a5a2a" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="90" cy="142" r="14" fill="#080a06" stroke="#3a5a2a" stroke-width="1.5"/>
+        <circle cx="90" cy="142" r="9" fill="none" stroke="#c9a84c" stroke-width="1"/>
+        <circle cx="90" cy="142" r="3" fill="#c9a84c"/>
+        <text x="90" y="178" text-anchor="middle" fill="#3a5a2a" font-size="8" font-family="monospace">SAFE</text>
+        <!-- lamp -->
+        <rect x="240" y="290" width="10" height="30" fill="#3a3020"/>
+        <ellipse cx="245" cy="285" rx="25" ry="12" fill="#4a3a10" opacity="0.8"/>
+        <ellipse cx="245" cy="285" rx="18" ry="8" fill="#ff9920" opacity="0.3"/>
+        <!-- door -->
+        <rect x="440" y="160" width="70" height="150" fill="#060806" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="503" cy="235" r="5" fill="#c9a84c"/>
+      `;
+    }
+  },
+  {
+    id: 3, name: "실험실",  icon: "🧪",
+    desc: "각종 시약병이 선반을 가득 채웠다. 중앙의 실험대 위에 노트가 펼쳐져 있다.",
+    safeHint: { tag: "힌트 #3", text: "빨강+파랑=보라. 녹색+빨강=노랑. 수식의 순서대로." },
+    safeCode: "2314",
+    safeClue: "노트 안쪽: 시약 번호 2-3-1-4",
+    exitCode: "2314",
+    exitClue: "시약 조합 번호 → 2314",
+    bgColor: "#080810",
+    drawScene: (svg) => {
+      const bottles = [
+        {x:60, c:'#c0392b', l:'①'},{x:110,c:'#2980b9',l:'②'},{x:160,c:'#27ae60',l:'③'},
+        {x:210,c:'#8e44ad',l:'④'},{x:260,c:'#e67e22',l:'⑤'},{x:310,c:'#f1c40f',l:'⑥'}
+      ];
+      svg.innerHTML = `
+        <defs><radialGradient id="rg3" cx="50%" cy="30%"><stop offset="0%" stop-color="#0c0c18"/><stop offset="100%" stop-color="#040408"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg3)"/>
+        <rect x="0" y="300" width="520" height="90" fill="#060610"/>
+        <!-- shelves -->
+        <rect x="20" y="80" width="480" height="10" fill="#1a1a2a"/>
+        <rect x="20" y="180" width="480" height="10" fill="#1a1a2a"/>
+        <!-- bottles -->
+        ${bottles.map(b=>`
+          <rect x="${b.x}" y="90" width="28" height="70" rx="4" fill="${b.c}" opacity="0.6"/>
+          <rect x="${b.x+4}" y="86" width="20" height="10" rx="2" fill="${b.c}" opacity="0.8"/>
+          <text x="${b.x+14}" y="170" text-anchor="middle" fill="#c0c0d0" font-size="11" font-family="monospace">${b.l}</text>
+        `).join('')}
+        <!-- lab table -->
+        <rect x="80" y="230" width="360" height="15" fill="#1a1a2a" rx="2"/>
+        <rect x="90" y="245" width="10" height="55" fill="#1a1a2a"/>
+        <rect x="420" y="245" width="10" height="55" fill="#1a1a2a"/>
+        <!-- notebook -->
+        <rect x="170" y="215" width="100" height="70" fill="#d4d0b0" rx="3"/>
+        <line x1="195" y1="225" x2="255" y2="225" stroke="#888" stroke-width="1"/>
+        <line x1="195" y1="235" x2="255" y2="235" stroke="#888" stroke-width="1"/>
+        <text x="220" y="260" text-anchor="middle" fill="#333" font-size="10">2-3-1-4</text>
+        <!-- safe -->
+        <rect x="380" y="195" width="80" height="60" rx="4" fill="#0a0a14" stroke="#2a2a4a" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="420" cy="225" r="16" fill="#080810" stroke="#2a2a4a" stroke-width="1.5"/>
+        <circle cx="420" cy="225" r="10" fill="none" stroke="#c9a84c" stroke-width="1"/>
+        <circle cx="420" cy="225" r="3" fill="#c9a84c"/>
+        <text x="420" y="268" text-anchor="middle" fill="#2a2a4a" font-size="8" font-family="monospace">SAFE</text>
+        <!-- exit door -->
+        <rect x="450" y="100" width="60" height="130" fill="#080810" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="503" cy="165" r="5" fill="#c9a84c"/>
+        <!-- beaker -->
+        <polygon points="130,245 150,285 110,285" fill="none" stroke="#2980b9" stroke-width="2" opacity="0.7"/>
+        <rect x="136" y="265" width="8" height="18" fill="#2980b9" opacity="0.4"/>
+      `;
+    }
+  },
+  {
+    id: 4, name: "기계실",  icon: "⚙️",
+    desc: "파이프와 기어들이 가득한 공간. 압력 게이지가 숫자를 표시하고 있다.",
+    safeHint: { tag: "힌트 #4", text: "게이지 A:7, B:3, C:5, D:2. 짝수만 골라 합산하라." },
+    safeCode: "6666",
+    safeClue: "주요 부품 번호: 6666",
+    exitCode: "6286",
+    exitClue: "게이지 A(7)+B(3)=10→6, B·D=6, C-B=2, A+D-B=6 → 6286? No — 짝수: (없음→0), B+D=3+2=5? 실제: 조작판 숫자 6-2-8-6",
+    bgColor: "#100808",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs><radialGradient id="rg4" cx="50%" cy="50%"><stop offset="0%" stop-color="#140e08"/><stop offset="100%" stop-color="#060402"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg4)"/>
+        <!-- pipes -->
+        <rect x="0" y="60" width="520" height="20" fill="#1a1210" rx="10"/>
+        <rect x="0" y="150" width="520" height="16" fill="#1a1210" rx="8"/>
+        <rect x="100" y="0" width="18" height="390" fill="#1a1210" rx="9"/>
+        <rect x="300" y="0" width="16" height="390" fill="#1a1210" rx="8"/>
+        <!-- gears -->
+        ${[{cx:200,cy:200,r:50},{cx:290,cy:200,r:35},{cx:355,cy:200,r:25}].map(g=>`
+          <circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="none" stroke="#3a2a18" stroke-width="${g.r/4}"/>
+          <circle cx="${g.cx}" cy="${g.cy}" r="${g.r*0.3}" fill="#1a1008" stroke="#4a3a20" stroke-width="2"/>
+          ${[...Array(8)].map((_,i)=>{const a=i*45*Math.PI/180;return `<rect x="${g.cx+g.r*0.85*Math.cos(a)-3}" y="${g.cy+g.r*0.85*Math.sin(a)-3}" width="6" height="8" fill="#3a2a18" transform="rotate(${i*45},${g.cx+g.r*0.85*Math.cos(a)},${g.cy+g.r*0.85*Math.sin(a)})"/>`}).join('')}
+        `).join('')}
+        <!-- gauges -->
+        ${[{x:30,y:200,v:'A:7'},{x:420,y:120,v:'B:3'},{x:420,y:200,v:'C:5'},{x:420,y:280,v:'D:2'}].map(g=>`
+          <circle cx="${g.x+20}" cy="${g.y+20}" r="22" fill="#0a0806" stroke="#3a2a18" stroke-width="2"/>
+          <text x="${g.x+20}" y="${g.y+24}" text-anchor="middle" fill="#c9a84c" font-size="10" font-family="monospace">${g.v}</text>
+        `).join('')}
+        <!-- safe -->
+        <rect x="30" y="280" width="80" height="60" rx="4" fill="#0c0a08" stroke="#3a2a18" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="70" cy="310" r="18" fill="#080604" stroke="#3a2a18" stroke-width="2"/>
+        <circle cx="70" cy="310" r="11" fill="none" stroke="#c9a84c" stroke-width="1"/>
+        <circle cx="70" cy="310" r="3" fill="#c9a84c"/>
+        <text x="70" y="353" text-anchor="middle" fill="#3a2a18" font-size="8" font-family="monospace">SAFE</text>
+        <!-- control panel -->
+        <rect x="150" y="290" width="220" height="80" fill="#0c0a08" rx="4" stroke="#3a2a18" stroke-width="2"/>
+        <text x="260" y="320" text-anchor="middle" fill="#c9a84c" font-size="12" font-family="monospace">6 - 2 - 8 - 6</text>
+        <text x="260" y="340" text-anchor="middle" fill="#3a2a18" font-size="8" font-family="monospace">CONTROL PANEL</text>
+        <!-- exit -->
+        <rect x="460" y="170" width="55" height="120" fill="#080604" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="508" cy="230" r="5" fill="#c9a84c"/>
+      `;
+    }
+  },
+  {
+    id: 5, name: "냉동 창고",  icon: "❄️",
+    desc: "극도로 차가운 공간. 냉동 박스들이 쌓여 있고 바닥에 숫자가 얼어붙어 있다.",
+    safeHint: { tag: "힌트 #5", text: "바닥의 얼어붙은 숫자: 5-9-0-1" },
+    safeCode: "5901",
+    safeClue: "냉동 박스 뒤: 스티커 — #5901",
+    exitCode: "5901",
+    exitClue: "얼어붙은 바닥 숫자 → 5901",
+    bgColor: "#080e14",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="rg5" cx="50%" cy="70%"><stop offset="0%" stop-color="#0a1018"/><stop offset="100%" stop-color="#040608"/></radialGradient>
+          <filter id="frost"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feBlend in="SourceGraphic" mode="multiply"/></filter>
+        </defs>
+        <rect width="520" height="390" fill="url(#rg5)"/>
+        <!-- ice floor -->
+        <rect x="0" y="310" width="520" height="80" fill="#0c1420" opacity="0.9"/>
+        <!-- frost overlay -->
+        <rect x="0" y="0" width="520" height="390" fill="#a0c8e0" opacity="0.04" filter="url(#frost)"/>
+        <!-- frozen boxes -->
+        ${[[40,180,100,110],[180,200,90,90],[300,160,120,130],[430,210,70,80],[100,290,80,60],[240,295,70,55],[360,285,90,65]].map(b=>`
+          <rect x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}" fill="#0c1620" stroke="#2a4060" stroke-width="2" rx="2"/>
+          <rect x="${b[0]+4}" y="${b[1]+4}" width="${b[2]-8}" height="${b[3]-8}" fill="none" stroke="#1a2a40" stroke-width="1" rx="1"/>
+        `).join('')}
+        <!-- ice crystals -->
+        ${[...Array(20)].map((_,i)=>{
+          const x=Math.floor(Math.random()*500)+10;
+          const y=Math.floor(Math.random()*280)+10;
+          return `<polygon points="${x},${y-6} ${x+2},${y-1} ${x+6},${y} ${x+2},${y+1} ${x},${y+6} ${x-2},${y+1} ${x-6},${y} ${x-2},${y-1}" fill="#2a5080" opacity="${0.3+Math.random()*0.4}"/>`;
+        }).join('')}
+        <!-- frozen floor numbers -->
+        <text x="120" y="345" text-anchor="middle" fill="#2a6080" font-size="28" font-family="monospace" font-weight="bold" opacity="0.7">5901</text>
+        <!-- safe -->
+        <rect x="300" y="200" width="80" height="65" rx="3" fill="#080e14" stroke="#2a4060" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="340" cy="232" r="18" fill="#060a10" stroke="#2a4060" stroke-width="1.5"/>
+        <circle cx="340" cy="232" r="11" fill="none" stroke="#80c0e0" stroke-width="1"/>
+        <circle cx="340" cy="232" r="3" fill="#80c0e0"/>
+        <text x="340" y="277" text-anchor="middle" fill="#2a4060" font-size="8" font-family="monospace">SAFE</text>
+        <!-- exit -->
+        <rect x="450" y="160" width="60" height="140" fill="#080c14" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="503" cy="230" r="5" fill="#c9a84c"/>
+        <!-- icicles -->
+        ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<polygon points="${50+i*45},0 ${43+i*45},${20+Math.floor(Math.random()*30)} ${57+i*45},${20+Math.floor(Math.random()*30)}" fill="#1a3a50" opacity="0.6"/>`).join('')}
+      `;
+    }
+  },
+  {
+    id: 6, name: "비밀 서재",  icon: "🕯️",
+    desc: "촛불이 밝힌 서재. 벽에 그림이 걸려있고 낡은 책상이 있다. 무언가 숨겨진 느낌.",
+    safeHint: { tag: "힌트 #6", text: "초상화 뒤에 숫자: 1·7·2·9 — 역순으로." },
+    safeCode: "9271",
+    safeClue: "책상 서랍: 열쇠와 함께 '9271'",
+    exitCode: "9271",
+    exitClue: "힌트 역순 → 9271",
+    bgColor: "#0e0a06",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs><radialGradient id="rg6" cx="40%" cy="50%"><stop offset="0%" stop-color="#1a1006"/><stop offset="100%" stop-color="#060402"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg6)"/>
+        <rect x="0" y="300" width="520" height="90" fill="#080602"/>
+        <!-- portrait frame -->
+        <rect x="170" y="30" width="180" height="220" fill="#0a0804" stroke="#6a4a20" stroke-width="8" rx="3"/>
+        <rect x="185" y="45" width="150" height="190" fill="#0c0a06"/>
+        <!-- portrait figure -->
+        <ellipse cx="260" cy="130" rx="35" ry="45" fill="#1a1208" stroke="#2a1a08" stroke-width="1"/>
+        <circle cx="260" cy="100" r="22" fill="#1a1208"/>
+        <text x="260" y="210" text-anchor="middle" fill="#2a1a08" font-size="9" font-family="serif">1 · 7 · 2 · 9</text>
+        <!-- desk -->
+        <rect x="80" y="250" width="360" height="20" fill="#1a1006" rx="2"/>
+        <rect x="90" y="270" width="15" height="50" fill="#1a1006"/>
+        <rect x="415" y="270" width="15" height="50" fill="#1a1006"/>
+        <!-- drawer -->
+        <rect x="160" y="255" width="120" height="12" fill="#140e04" stroke="#2a1a08" stroke-width="1" rx="1" class="hotspot" onclick="openSafe()"/>
+        <circle cx="220" cy="261" r="3" fill="#c9a84c"/>
+        <!-- candles on desk -->
+        ${[[120,230],[320,230],[420,220]].map(c=>`
+          <rect x="${c[0]-3}" y="${c[1]}" width="6" height="22" fill="#d4c080"/>
+          <ellipse cx="${c[0]}" cy="${c[1]-2}" rx="3" ry="6" fill="#ff8820" opacity="0.8"/>
+          <ellipse cx="${c[0]}" cy="${c[1]+2}" rx="8" ry="5" fill="#ff8820" opacity="0.15"/>
+        `).join('')}
+        <!-- safe behind portrait hint -->
+        <rect x="30" y="170" width="75" height="60" rx="3" fill="#0a0806" stroke="#3a2a10" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="67" cy="200" r="16" fill="#080604" stroke="#3a2a10" stroke-width="1.5"/>
+        <circle cx="67" cy="200" r="10" fill="none" stroke="#c9a84c" stroke-width="1"/>
+        <circle cx="67" cy="200" r="3" fill="#c9a84c"/>
+        <text x="67" y="243" text-anchor="middle" fill="#3a2a10" font-size="8" font-family="monospace">SAFE</text>
+        <!-- exit -->
+        <rect x="450" y="140" width="65" height="150" fill="#080602" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="508" cy="215" r="5" fill="#c9a84c"/>
+        <!-- book on desk -->
+        <rect x="260" y="235" width="70" height="15" fill="#5a3a10" rx="1"/>
+        <line x1="295" y1="235" x2="295" y2="250" stroke="#3a2008" stroke-width="1"/>
+      `;
+    }
+  },
+  {
+    id: 7, name: "지하 수조",  icon: "💧",
+    desc: "천장에서 물방울이 떨어진다. 수조 안 조명이 흔들리며 바닥을 비춘다.",
+    safeHint: { tag: "힌트 #7", text: "수조 벽의 수위 표시: 3-6-1-4" },
+    safeCode: "3614",
+    safeClue: "방수 케이스 안 메모 — 3-6-1-4",
+    exitCode: "3614",
+    exitClue: "수위 표시 숫자 → 3614",
+    bgColor: "#060c10",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="rg7" cx="50%" cy="40%"><stop offset="0%" stop-color="#0a1418"/><stop offset="100%" stop-color="#040608"/></radialGradient>
+          <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a3050" stop-opacity="0.8"/><stop offset="100%" stop-color="#040e18" stop-opacity="0.9"/></linearGradient>
+        </defs>
+        <rect width="520" height="390" fill="url(#rg7)"/>
+        <!-- water tank -->
+        <rect x="80" y="60" width="360" height="240" fill="#060a10" stroke="#1a3040" stroke-width="3" rx="4"/>
+        <rect x="83" y="180" width="354" height="117" fill="url(#water)" rx="2"/>
+        <!-- water surface ripple -->
+        ${[0,1,2,3].map(i=>`<ellipse cx="${150+i*80}" cy="182" rx="${20+i*5}" ry="3" fill="#1a4060" opacity="0.5"/>`).join('')}
+        <!-- water level marks -->
+        ${[0,1,2,3,4,5].map(i=>`
+          <line x1="80" y1="${80+i*40}" x2="92" y2="${80+i*40}" stroke="#2a5060" stroke-width="2"/>
+          <text x="96" y="${84+i*40}" fill="#2a5060" font-size="9" font-family="monospace">${6-i}0%</text>
+        `).join('')}
+        <!-- level marker numbers -->
+        <text x="120" y="95" fill="#3a8080" font-size="18" font-family="monospace" font-weight="bold">3</text>
+        <text x="200" y="115" fill="#3a8080" font-size="18" font-family="monospace" font-weight="bold">6</text>
+        <text x="290" y="135" fill="#3a8080" font-size="18" font-family="monospace" font-weight="bold">1</text>
+        <text x="370" y="105" fill="#3a8080" font-size="18" font-family="monospace" font-weight="bold">4</text>
+        <!-- safe (waterproof) -->
+        <rect x="150" y="85" width="80" height="65" rx="5" fill="#080c10" stroke="#1a4050" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="190" cy="117" r="18" fill="#060a0e" stroke="#1a4050" stroke-width="2"/>
+        <circle cx="190" cy="117" r="11" fill="none" stroke="#40a0c0" stroke-width="1.5"/>
+        <circle cx="190" cy="117" r="3" fill="#40a0c0"/>
+        <text x="190" y="162" text-anchor="middle" fill="#1a4050" font-size="8" font-family="monospace">SAFE</text>
+        <!-- drips -->
+        ${[100,200,300,420].map(x=>`<ellipse cx="${x}" cy="${30+Math.random()*20}" rx="2" ry="5" fill="#1a4060" opacity="0.6"/>`).join('')}
+        <!-- exit -->
+        <rect x="450" y="170" width="60" height="130" fill="#060a10" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="503" cy="235" r="5" fill="#c9a84c"/>
+      `;
+    }
+  },
+  {
+    id: 8, name: "암호 연구실",  icon: "🔐",
+    desc: "모니터들이 가득한 공간. 화면에 이진수와 암호문이 떠다닌다.",
+    safeHint: { tag: "힌트 #8", text: "이진수 1000=8, 0011=3, 0111=7, 0010=2 → 8372" },
+    safeCode: "8372",
+    safeClue: "암호화된 파일 해독 결과: 8372",
+    exitCode: "8372",
+    exitClue: "이진수 디코딩 → 8372",
+    bgColor: "#040c08",
+    drawScene: (svg) => {
+      const lines = ['01001000 01100101','1000 0011 0111 0010','ACCESS: GRANTED','CODE: 8 3 7 2','> decrypt file...'];
+      svg.innerHTML = `
+        <defs><radialGradient id="rg8" cx="50%" cy="50%"><stop offset="0%" stop-color="#060e08"/><stop offset="100%" stop-color="#020402"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg8)"/>
+        <!-- monitors -->
+        ${[[30,60,200,160],[280,40,210,170],[30,250,150,110],[320,250,170,110]].map((m,i)=>`
+          <rect x="${m[0]}" y="${m[1]}" width="${m[2]}" height="${m[3]}" fill="#020804" stroke="#0a2a10" stroke-width="3" rx="4"/>
+          <rect x="${m[0]+6}" y="${m[1]+6}" width="${m[2]-12}" height="${m[3]-12}" fill="#020c04"/>
+          ${[0,1,2,3,4].map(l=>`<text x="${m[0]+10}" y="${m[1]+20+l*22}" fill="#00aa44" font-size="8" font-family="monospace" opacity="${0.4+Math.random()*0.6}">${lines[(i*5+l)%lines.length]}</text>`).join('')}
+        `).join('')}
+        <!-- safe -->
+        <rect x="200" y="240" width="100" height="75" rx="5" fill="#030906" stroke="#0a2a10" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="250" cy="277" r="22" fill="#020606" stroke="#0a2a10" stroke-width="2"/>
+        <circle cx="250" cy="277" r="14" fill="none" stroke="#00cc44" stroke-width="1.5"/>
+        <circle cx="250" cy="277" r="4" fill="#00cc44"/>
+        <text x="250" y="328" text-anchor="middle" fill="#0a2a10" font-size="8" font-family="monospace">SAFE</text>
+        <!-- cables -->
+        <path d="M 100 220 Q 150 230 200 240" fill="none" stroke="#0a2010" stroke-width="3"/>
+        <path d="M 360 220 Q 310 230 300 240" fill="none" stroke="#0a2010" stroke-width="3"/>
+        <!-- exit -->
+        <rect x="455" y="140" width="60" height="140" fill="#020804" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="508" cy="210" r="5" fill="#c9a84c"/>
+        <!-- blinking cursor -->
+        <rect x="72" y="198" width="6" height="10" fill="#00aa44" opacity="0.8"/>
+      `;
+    }
+  },
+  {
+    id: 9, name: "유리 미로",  icon: "🔮",
+    desc: "투명한 유리 벽으로 만든 미로. 어디가 진짜 출구인지 알 수 없다.",
+    safeHint: { tag: "힌트 #9", text: "반사된 숫자를 역으로 읽으면 — 거울에 비친 4739" },
+    safeCode: "9374",
+    safeClue: "거울 뒤편 금고: 9374",
+    exitCode: "9374",
+    exitClue: "거울 역순 4739 → 9374",
+    bgColor: "#0a080e",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="rg9" cx="50%" cy="50%"><stop offset="0%" stop-color="#100c18"/><stop offset="100%" stop-color="#040308"/></radialGradient>
+          <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.01"/></linearGradient>
+        </defs>
+        <rect width="520" height="390" fill="url(#rg9)"/>
+        <!-- glass maze walls -->
+        ${[
+          [60,60,8,260],[60,60,200,8],[260,60,8,150],[180,210,80,8],[180,210,8,110],
+          [60,320,200,8],[260,180,150,8],[410,60,8,150],[320,280,90,8],[320,280,8,80]
+        ].map(w=>`
+          <rect x="${w[0]}" y="${w[1]}" width="${w[2]}" height="${w[3]}" fill="url(#glass)" stroke="#3a2a50" stroke-width="1.5" rx="1"/>
+          <rect x="${w[0]+1}" y="${w[1]+1}" width="${w[2]-2}" height="${w[3]-2}" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.1" rx="1"/>
+        `).join('')}
+        <!-- mirror -->
+        <rect x="300" y="80" width="100" height="150" fill="#0e0c14" stroke="#6a5080" stroke-width="3" rx="2"/>
+        <rect x="304" y="84" width="92" height="142" fill="#0c0a12" opacity="0.8"/>
+        <text x="350" y="160" text-anchor="middle" fill="#6a5080" font-size="20" font-family="monospace" transform="scale(-1,1) translate(-700,0)">4739</text>
+        <text x="350" y="185" text-anchor="middle" fill="#3a2a50" font-size="9" font-family="monospace">↑ MIRROR</text>
+        <!-- safe -->
+        <rect x="95" y="100" width="80" height="65" rx="3" fill="#0a0810" stroke="#3a2a50" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="135" cy="132" r="18" fill="#080610" stroke="#3a2a50" stroke-width="1.5"/>
+        <circle cx="135" cy="132" r="11" fill="none" stroke="#8060c0" stroke-width="1.5"/>
+        <circle cx="135" cy="132" r="3" fill="#8060c0"/>
+        <text x="135" y="177" text-anchor="middle" fill="#3a2a50" font-size="8" font-family="monospace">SAFE</text>
+        <!-- exit door -->
+        <rect x="440" y="200" width="70" height="150" fill="#080610" stroke="#c9a84c" stroke-width="2"/>
+        <circle cx="503" cy="275" r="6" fill="#c9a84c"/>
+        <!-- reflections -->
+        ${[0,1,2,3].map(i=>`<line x1="${100+i*80}" y1="0" x2="${80+i*80}" y2="390" stroke="#ffffff" stroke-width="0.5" opacity="0.04"/>`).join('')}
+      `;
+    }
+  },
+  {
+    id: 10, name: "최종 제어실",  icon: "🎯",
+    desc: "탈출의 마지막 관문. 거대한 제어판이 당신을 기다린다. 지금까지 모은 힌트를 이용하라!",
+    safeHint: { tag: "힌트 #10", text: "모든 방의 첫 번째 힌트 숫자를 순서대로 — 완성하라." },
+    safeCode: "1234",
+    safeClue: "마스터 키 번호: 1234",
+    exitCode: "1234",
+    exitClue: "마스터 코드 → 1234 (최종 탈출!)",
+    bgColor: "#0a0a0e",
+    drawScene: (svg) => {
+      svg.innerHTML = `
+        <defs><radialGradient id="rg10" cx="50%" cy="30%"><stop offset="0%" stop-color="#14141e"/><stop offset="100%" stop-color="#040408"/></radialGradient></defs>
+        <rect width="520" height="390" fill="url(#rg10)"/>
+        <!-- big control panel -->
+        <rect x="60" y="60" width="400" height="240" fill="#0c0c14" stroke="#c9a84c" stroke-width="2" rx="6"/>
+        <!-- panel header -->
+        <rect x="60" y="60" width="400" height="30" fill="#0e0e18" rx="6"/>
+        <text x="260" y="81" text-anchor="middle" fill="#c9a84c" font-size="12" font-family="monospace" letter-spacing="4">MASTER CONTROL SYSTEM</text>
+        <!-- switches -->
+        ${[...Array(20)].map((_,i)=>{
+          const x = 80 + (i%5)*78;
+          const y = 110 + Math.floor(i/5)*44;
+          const on = Math.random()>0.5;
+          return `<rect x="${x}" y="${y}" width="50" height="24" rx="12" fill="${on?'#1a3a1a':'#1a1a2a'}" stroke="${on?'#27ae60':'#3a3a5a'}" stroke-width="1.5"/>
+          <circle cx="${on?x+36:x+14}" cy="${y+12}" r="10" fill="${on?'#27ae60':'#4a4a6a'}"/>`;
+        }).join('')}
+        <!-- countdown display -->
+        <rect x="160" y="260" width="200" height="50" fill="#080810" stroke="#c9a84c" stroke-width="2" rx="4"/>
+        <text x="260" y="291" text-anchor="middle" fill="#c9a84c" font-size="22" font-family="monospace" id="final-display">LOCKED</text>
+        <!-- safe -->
+        <rect x="30" y="200" width="20" height="80" fill="none"/>
+        <rect x="25" y="150" width="26" height="80"/>
+        <rect x="20" y="170" width="90" height="75" rx="4" fill="#080810" stroke="#c9a84c" stroke-width="2" class="hotspot" onclick="openSafe()"/>
+        <circle cx="65" cy="207" r="20" fill="#060608" stroke="#c9a84c" stroke-width="2"/>
+        <circle cx="65" cy="207" r="12" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+        <circle cx="65" cy="207" r="4" fill="#c9a84c"/>
+        <text x="65" y="255" text-anchor="middle" fill="#c9a84c" font-size="8" font-family="monospace">MASTER</text>
+        <!-- EXIT DOOR - big and dramatic -->
+        <rect x="420" y="120" width="90" height="210" fill="#080810" stroke="#c9a84c" stroke-width="3" rx="3"/>
+        <text x="465" y="220" text-anchor="middle" fill="#c9a84c" font-size="10" font-family="monospace">EXIT</text>
+        <circle cx="500" cy="230" r="8" fill="#c9a84c"/>
+        <!-- warning lights -->
+        ${[80,200,320,440].map((x,i)=>`<circle cx="${x}" cy="40" r="8" fill="${['#c0392b','#e67e22','#f1c40f','#27ae60'][i]}" opacity="0.8"/>`).join('')}
+      `;
+    }
+  }
+];
+
+// ═══════════════════════════════════════════════
+//  STACK ENGINE
+// ═══════════════════════════════════════════════
+class RoomStack {
+  constructor() { this._stack = []; }
+  push(id) { this._stack.push(id); }
+  pop() { return this._stack.length > 1 ? this._stack.pop() : null; }
+  peek() { return this._stack[this._stack.length - 1] ?? null; }
+  has(id) { return this._stack.includes(id); }
+  size() { return this._stack.length; }
+  toArray() { return [...this._stack]; }
+}
+
+// ═══════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════
+const state = {
+  stack: new RoomStack(),
+  hints: [],
+  cleared: new Set(),
+  safeOpened: new Set(),
+  currentPuzzle: null, // 'safe' | 'exit'
+  timerInterval: null,
+  seconds: 0,
+  started: false
+};
+
+// ═══════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════
+function renderRoomList() {
+  const cur = state.stack.peek();
+  const list = document.getElementById('room-list');
+  list.innerHTML = ROOMS.map(r => {
+    const locked = r.id > 1 && !state.cleared.has(r.id - 1) && !state.cleared.has(r.id);
+    const current = r.id === cur;
+    const cleared = state.cleared.has(r.id);
+    return `<div class="room-btn ${locked?'locked':''} ${current?'current':''} ${cleared?'cleared':''}"
+      onclick="${locked?'':'enterRoom('+r.id+')'}">
+      <span class="room-num">${String(r.id).padStart(2,'0')}</span>
+      <span class="room-name">${r.name}</span>
+      <span class="room-icon">${cleared?'✅':r.icon}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderScene(roomId) {
+  const room = ROOMS.find(r => r.id === roomId);
+  if (!room) return;
+  document.getElementById('scene-title').textContent = `[${String(room.id).padStart(2,'0')}] ${room.name}`;
+  document.getElementById('scene-desc').textContent = room.desc;
+  const svg = document.getElementById('main-svg');
+  room.drawScene(svg);
+  // show/hide buttons
+  document.getElementById('safe-btn').style.display = state.safeOpened.has(roomId) ? 'none' : 'inline-block';
+  document.getElementById('exit-btn').style.display = 'inline-block';
+}
+
+function renderStack() {
+  const arr = state.stack.toArray();
+  document.getElementById('stack-items').innerHTML =
+    arr.map(id => `<span class="stack-item">${String(id).padStart(2,'0')}</span>`).join(' → ');
+}
+
+function renderHints() {
+  const list = document.getElementById('hint-list');
+  list.innerHTML = state.hints.map(h =>
+    `<div class="hint-item"><span class="hint-tag">${h.tag}</span>${h.text}</div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════════════════════
+function startGame() {
+  document.getElementById('intro-overlay').style.display = 'none';
+  state.started = true;
+  enterRoom(1);
+  state.timerInterval = setInterval(() => {
+    state.seconds++;
+    const m = String(Math.floor(state.seconds/60)).padStart(2,'0');
+    const s = String(state.seconds%60).padStart(2,'0');
+    document.getElementById('timer-box').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function enterRoom(id) {
+  if (!state.started) return;
+  const room = ROOMS.find(r=>r.id===id);
+  const cur = state.stack.peek();
+  // prevent re-entering same
+  if (cur === id) return;
+  // check locked
+  if (id > 1 && !state.cleared.has(id-1) && !state.cleared.has(id)) return;
+  state.stack.push(id);
+  renderScene(id);
+  renderStack();
+  renderRoomList();
+}
+
+function goBack() {
+  if (state.stack.size() <= 1) { alert('더 이상 뒤로 갈 수 없습니다.'); return; }
+  state.stack.pop();
+  const prev = state.stack.peek();
+  renderScene(prev);
+  renderStack();
+  renderRoomList();
+}
+
+function openSafe() {
+  const cur = state.stack.peek();
+  if (!cur) return;
+  if (state.safeOpened.has(cur)) { showMsg('이미 열린 금고입니다.'); return; }
+  const room = ROOMS.find(r=>r.id===cur);
+  state.currentPuzzle = 'safe';
+  showPuzzle(`금고 — ${room.name}`, `금고를 열 4자리 코드를 입력하세요.\n\n💡 ${room.safeClue}`, '');
+}
+
+function tryExit() {
+  const cur = state.stack.peek();
+  if (!cur) return;
+  if (state.cleared.has(cur)) {
+    if (cur < 10) { enterRoom(cur+1); return; }
+    else { showClear(); return; }
+  }
+  const room = ROOMS.find(r=>r.id===cur);
+  state.currentPuzzle = 'exit';
+  showPuzzle(`문 열기 — ${room.name}`, `탈출 코드를 입력하세요.\n\n🔒 힌트: ${room.exitClue}`, '');
+}
+
+// ═══════════════════════════════════════════════
+//  PUZZLE
+// ═══════════════════════════════════════════════
+function showPuzzle(title, desc, val) {
+  document.getElementById('puzzle-title').textContent = title;
+  document.getElementById('puzzle-desc').textContent = desc;
+  document.getElementById('puzzle-input').value = val;
+  document.getElementById('puzzle-msg').textContent = '';
+  document.getElementById('puzzle-msg').style.color = '';
+  document.getElementById('puzzle-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('puzzle-input').focus(), 100);
+}
+
+function closePuzzle() {
+  document.getElementById('puzzle-overlay').classList.remove('show');
+  state.currentPuzzle = null;
+}
+
+function submitPuzzle() {
+  const val = document.getElementById('puzzle-input').value.trim();
+  const cur = state.stack.peek();
+  const room = ROOMS.find(r=>r.id===cur);
+  const msg = document.getElementById('puzzle-msg');
+
+  if (state.currentPuzzle === 'safe') {
+    if (val === room.safeCode) {
+      state.safeOpened.add(cur);
+      state.hints.push(room.safeHint);
+      renderHints();
+      msg.style.color = '#27ae60';
+      msg.textContent = '✅ 금고가 열렸습니다! 힌트를 획득했습니다.';
+      document.getElementById('safe-btn').style.display = 'none';
+      setTimeout(closePuzzle, 1200);
+    } else {
+      msg.style.color = '#c0392b';
+      msg.textContent = '❌ 코드가 틀렸습니다.';
+    }
+  } else if (state.currentPuzzle === 'exit') {
+    if (val === room.exitCode) {
+      state.cleared.add(cur);
+      msg.style.color = '#27ae60';
+      msg.textContent = cur < 10 ? '🚪 문이 열렸습니다! 다음 방으로...' : '🏆 최종 탈출 성공!';
+      renderRoomList();
+      setTimeout(() => {
+        closePuzzle();
+        if (cur < 10) enterRoom(cur+1);
+        else showClear();
+      }, 1000);
+    } else {
+      msg.style.color = '#c0392b';
+      msg.textContent = '❌ 코드가 틀렸습니다.';
+    }
+  }
+}
+
+function showClear() {
+  clearInterval(state.timerInterval);
+  const m = String(Math.floor(state.seconds/60)).padStart(2,'0');
+  const s = String(state.seconds%60).padStart(2,'0');
+  document.getElementById('clear-msg').innerHTML =
+    `탈출 완료!<br>소요 시간: ${m}분 ${s}초<br>수집한 힌트: ${state.hints.length}개<br>방문한 방: ${state.stack.size()}회`;
+  document.getElementById('clear-overlay').classList.add('show');
+}
+
+function showMsg(t) { alert(t); }
+
+// keyboard support
+document.getElementById('puzzle-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitPuzzle();
+  if (e.key === 'Escape') closePuzzle();
+});
+
+// init room list on load
+renderRoomList();
+</script>
+</body>
+</html>
